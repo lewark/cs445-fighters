@@ -1,0 +1,8 @@
+sudo apt update
+sudo apt upgrade
+
+sudo apt install python3-venv python3-opengl
+python3 -m venv venv
+source venv/bin/activate
+
+pip3 install torch torchvision torchaudio notebook jupyterlab gymnasium stable-retro stable_baselines3[extra]
