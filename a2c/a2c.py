@@ -1,4 +1,5 @@
-import fighter_envs
+from .fighter_envs import StreetFighter, make_env
+from .train import train_model
 
 def search(params_table, cur_params={}, keys=None):
     if keys is None:
@@ -34,8 +35,8 @@ if __name__ == "__main__":
     model_setups = search(params)
     print(len(model_setups))
 
-    env = fighter_envs.make_env(fighter_envs.StreetFighter, n_procs, n_stack, render_mode=None)
+    env = make_env(StreetFighter, n_procs, n_stack, render_mode=None)
     for model_options in model_setups:
         print(model_options)
-        fighter_envs.train_model(A2C, env, model_options, 1000000)
+        train_model(A2C, env, model_options, 1000000)
     env.close()
