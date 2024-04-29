@@ -1,0 +1,5 @@
+*.md
+*.zip
+__pycache__/
+opt/
+logs/
