@@ -2,6 +2,9 @@ import torch
 from stable_baselines3.common.evaluation import evaluate_policy
 
 
+LOG_DIR = './logs/'
+OPT_DIR = './opt/'
+
 def train_model(model_class, env: Env, model_options: dict[str, Any], total_timesteps: int = 25000):
     env.reset()
 

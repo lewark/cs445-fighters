@@ -104,9 +104,6 @@ def run(env: Env) -> None:
                 print(reward)
 
 
-LOG_DIR = './logs/'
-OPT_DIR = './opt/'
-
 def make_env(env_class, n_procs: int = 4, n_stack: int = 4, **kwargs) -> Env:
     from stable_baselines3.common.monitor import Monitor
     from stable_baselines3.common.vec_env import DummyVecEnv, VecFrameStack, SubprocVecEnv
