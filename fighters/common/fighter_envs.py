@@ -122,12 +122,12 @@ class StreetFighter(FighterEnv):
 
         new_player_wins = info["matches_won"]
         if new_player_wins > self.player_wins:
-            reward += 0.9 * (new_player_wins - self.player_wins)
+            reward += 0.9 * new_player_wins
         self.player_wins = new_player_wins
         
         new_enemy_wins = info["enemy_matches_won"]
         if new_enemy_wins > self.enemy_wins:
-            reward -= 0.9 * (new_enemy_wins - self.enemy_wins)
+            reward -= 0.9 * new_enemy_wins
         self.enemy_wins = new_enemy_wins
 
         if reward == 0.0:
