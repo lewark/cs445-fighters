@@ -1,18 +1,5 @@
-from .fighter_envs import StreetFighter, make_env, train_model
-
-def search(params_table, cur_params={}, keys=None):
-    if keys is None:
-        keys = list(params_table.keys())
-    if len(keys) == 0:
-        return [cur_params]
-
-    model_setups = []
-    key = keys[0]
-    for value in params_table[key]:
-        new_params = {**cur_params, key: value}
-        model_setups.extend(search(params_table, new_params, keys[1:]))
-
-    return model_setups
+from ..common.fighter_envs import StreetFighter, make_env
+from ..common.train import train_model, get_hyperparam_combos
 
 
 if __name__ == "__main__":
@@ -32,11 +19,11 @@ if __name__ == "__main__":
     n_procs = 8
     n_stack = 4
 
-    model_setups = search(params)
+    model_setups = get_hyperparam_combos(params)
     print("Training", len(model_setups), "models")
 
     env = make_env(StreetFighter, n_procs, n_stack, render_mode=None, random_delay=30)
     for model_options in model_setups:
         print(model_options)
-        train_model(A2C, env, model_options, total_timesteps=500000, log_interval=1)
+        train_model(A2C, env, model_options, total_timesteps=1, log_interval=1, n_eval_episodes=1)
     env.close()

@@ -1,6 +1,3 @@
-import os
-import gc
-import time
 from typing import Any, Optional, Union
 import random
 
@@ -10,10 +7,11 @@ from gymnasium.core import ActType, ObsType, RenderFrame, SupportsFloat
 from gymnasium.spaces import MultiBinary, Box
 import numpy as np
 import retro
-from stable_baselines3.common.evaluation import evaluate_policy
 from stable_baselines3.common.monitor import Monitor
 from stable_baselines3.common.vec_env import DummyVecEnv, VecFrameStack, SubprocVecEnv
 import torch
+
+from .constants import LOG_DIR
 
 
 class FighterEnv(Env):
@@ -182,10 +180,6 @@ def run(env: Env) -> None:
                 print(reward)
 
 
-LOG_DIR = './logs/'
-OPT_DIR = './opt/'
-
-
 def make_env(env_class, n_procs: int = 4, n_stack: int = 4, **kwargs) -> Env:
     if n_procs == 0:
         env = DummyVecEnv([lambda: Monitor(env_class(**kwargs), LOG_DIR)])
@@ -193,32 +187,3 @@ def make_env(env_class, n_procs: int = 4, n_stack: int = 4, **kwargs) -> Env:
         env = SubprocVecEnv([(lambda: Monitor(env_class(**kwargs), LOG_DIR)) for proc in range(n_procs)])
     env = VecFrameStack(env, n_stack, channels_order='last')
     return env
-
-    
-def train_model(model_class, env: Env, model_options: dict[str, Any], total_timesteps: int = 25000, n_eval_episodes=25, tb_log_name="A2C", log_interval=1, verbose=0, device="auto"):
-    env.reset()
-    start_time = time.time()
-    
-    # https://stable-baselines3.readthedocs.io/en/master/guide/custom_policy.html
-    model = model_class(env=env, verbose=verbose, device=device, tensorboard_log="./board/", **model_options)
-    print("Learning...")
-    model.learn(total_timesteps=total_timesteps, tb_log_name=tb_log_name, log_interval=log_interval, progress_bar=True)
-
-    print("Evaluating...")
-    ep_rewards, ep_stds = evaluate_policy(model, env, n_eval_episodes=n_eval_episodes, return_episode_rewards = True, deterministic = False)
-    reward_mean = np.mean(np.array(ep_rewards))
-    std_mean = np.mean(np.array(ep_stds))
-    reward_sum = np.sum(np.array(ep_rewards))
-
-    hyper_ps = [str(model_options[key]) for key in model_options] + [str(reward_mean), str(std_mean), str(reward_sum)]
-    elapsed_time = time.time() - start_time    
-    arch = [model_options[key] for key in model_options] + [ep_rewards, ep_stds, reward_mean, std_mean, reward_sum, elapsed_time]
-    
-    SAVE_PATH = os.path.join(OPT_DIR, 'trial_{}_best_model'.format("_".join(hyper_ps)))
-    model.save(SAVE_PATH)
-    
-    print(f'finished architecture {arch} at {elapsed_time/60} minutes.')
-    del model, env, ep_rewards, reward_mean, reward_sum, ep_stds, hyper_ps
-    torch.cuda.empty_cache()
-    gc.collect()
-    return arch
