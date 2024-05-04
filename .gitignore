@@ -1,5 +1,8 @@
 *.md
 *.zip
 __pycache__/
-opt/
-logs/
+/opt/
+/logs/
+/board/
+/results/
+venv/
