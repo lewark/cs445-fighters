@@ -1,5 +1,4 @@
-from .fighter_envs import StreetFighter, make_env
-from .train import train_model
+from .fighter_envs import StreetFighter, make_env, train_model
 
 def search(params_table, cur_params={}, keys=None):
     if keys is None:
@@ -21,7 +20,7 @@ if __name__ == "__main__":
 
     params = {
         "policy": ['CnnPolicy', 'MlpPolicy'],
-        "learning_rate": [1, 0.1, 0.01, 0.001],
+        "learning_rate": [0.1, 0.01, 0.001, 0.001],
         "n_steps": [1024], #, 32, 64, 128, 256]
         "use_rms_prop": [True, False],
         "gamma": [0.99, 0.5],
@@ -29,7 +28,7 @@ if __name__ == "__main__":
         #"use_sde": [False, True]
     }
 
-    n_procs = 12
+    n_procs = 8
     n_stack = 4
 
     model_setups = search(params)
@@ -38,5 +37,5 @@ if __name__ == "__main__":
     env = make_env(StreetFighter, n_procs, n_stack, render_mode=None)
     for model_options in model_setups:
         print(model_options)
-        train_model(A2C, env, model_options, 1000000)
+        train_model(A2C, env, model_options, 500000)
     env.close()
