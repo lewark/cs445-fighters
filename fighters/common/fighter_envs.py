@@ -55,8 +55,8 @@ class FighterEnv(Env):
 
         # plain score-based reward already implemented in default stable-retro config
         # modify to include health
-        score = self.compute_score(info)
-        return obs, score, terminated, truncated, info
+        reward = self.compute_reward(info)
+        return obs, reward, terminated, truncated, info
 
     def render(self, *args, **kwargs) -> Union[RenderFrame, list[RenderFrame], None]:
         return self.game.render(*args, **kwargs)
@@ -81,7 +81,7 @@ class FighterEnv(Env):
     def get_wins(self) -> int:
         return self.wins
         
-    def compute_score(self, info: dict[str, Any]) -> int:
+    def compute_reward(self, info: dict[str, Any]) -> int:
         return (
             info.get("score", 0) / 10
             + (info.get("health", 0) - info.get("enemy_health", 0))
@@ -100,7 +100,7 @@ class StreetFighter(FighterEnv):
         self.player_wins = 0
         self.random_delay = random_delay
 
-    def compute_score(self, info: dict[str, Any]) -> int:
+    def compute_reward(self, info: dict[str, Any]) -> int:
         reward = 0
 
         new_score = info["score"]
@@ -134,8 +134,6 @@ class StreetFighter(FighterEnv):
             return -0.0001
         
         return reward
-        
-    # def to_zero(self):
         
     def reset(self, *, seed: Optional[int] = None, options: Optional[dict[str, Any]] = None) -> tuple[ObsType, dict[str, Any]]:
         self.score = 0
