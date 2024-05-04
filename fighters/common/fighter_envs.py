@@ -26,8 +26,8 @@ class FighterEnv(Env):
                                use_restricted_actions=retro.Actions.FILTERED,
                                render_mode=render_mode)
 
-    def reset(self, seed: Optional[int] = None) -> tuple[ObsType, dict[str, Any]]:
-        # super().reset(seed=seed, options=options)
+    def reset(self, *, seed: Optional[int] = None, options: Optional[dict[str, Any]] = None) -> tuple[ObsType, dict[str, Any]]:
+        super().reset(seed=seed, options=options)
         obs, info = self.game.reset(seed=seed)
         obs = self.preprocess(obs)
         self.previous_frame = obs
@@ -137,14 +137,14 @@ class StreetFighter(FighterEnv):
         
     # def to_zero(self):
         
-    def reset(self, seed: Optional[int] = None) -> tuple[ObsType, dict[str, Any]]:
+    def reset(self, *, seed: Optional[int] = None, options: Optional[dict[str, Any]] = None) -> tuple[ObsType, dict[str, Any]]:
         self.score = 0
         self.enemy_health = 175
         self.health = 175
         self.enemy_wins = 0
         self.player_wins = 0
 
-        return super().reset(seed=seed)
+        return super().reset(seed=seed, options=options)
 
 
 class ArtOfFighting(FighterEnv):
