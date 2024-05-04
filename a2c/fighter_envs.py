@@ -2,6 +2,7 @@ import os
 import gc
 import time
 from typing import Any, Optional, Union
+import random
 
 import cv2
 from gymnasium import Env
@@ -16,11 +17,13 @@ import torch
 
 
 class FighterEnv(Env):
-    def __init__(self, game: str, render_mode: Optional[str] = "human") -> None:
+    def __init__(self, game: str, render_mode: Optional[str] = "human", random_delay: int = 30, use_delta=False) -> None:
         super().__init__()
         self.observation_space = Box(low=0, high=255, shape=(84, 84, 1), dtype=np.uint8)
         self.action_space = MultiBinary(12)
         self.wins = 0
+        self.random_delay = random_delay
+        self.use_delta = use_delta
         self.game = retro.make(game=game,
                                use_restricted_actions=retro.Actions.FILTERED,
                                render_mode=render_mode)
@@ -28,11 +31,19 @@ class FighterEnv(Env):
     def reset(self, seed: Optional[int] = None) -> tuple[ObsType, dict[str, Any]]:
         # super().reset(seed=seed, options=options)
         obs, info = self.game.reset(seed=seed)
-
         obs = self.preprocess(obs)
         self.previous_frame = obs
 
+        if self.use_delta:
+            obs = self.compute_delta(obs)
+
         self.score = 0
+
+        if self.random_delay > 0:
+            null_action = np.zeros(self.action_space.shape, dtype=self.action_space.dtype)
+
+            for i in range(random.randint(0, self.random_delay)):
+                obs, _, _, _, info = self.step(null_action)
 
         return obs, info
 
@@ -40,6 +51,9 @@ class FighterEnv(Env):
         obs, reward, terminated, truncated, info = self.game.step(action)
 
         obs = self.preprocess(obs)
+
+        if self.use_delta:
+            obs = self.compute_delta(obs)
 
         # plain score-based reward already implemented in default stable-retro config
         # modify to include health
@@ -54,6 +68,11 @@ class FighterEnv(Env):
         resize = cv2.resize(gray, (84, 84), interpolation=cv2.INTER_CUBIC)
         channels = np.reshape(resize, (84, 84, 1))
         return channels
+
+    def compute_delta(self, img: np.ndarray) -> np.ndarray:
+        delta = img - self.previous_frame
+        self.previous_frame = img
+        return delta
 
     def seed(self, seed: int) -> None:
         pass
@@ -74,21 +93,22 @@ class FighterEnv(Env):
 
 
 class StreetFighter(FighterEnv):
-    def __init__(self, render_mode: Optional[str] = "human") -> None:
-        super().__init__('StreetFighterIISpecialChampionEdition-Genesis', render_mode)
+    def __init__(self, render_mode: Optional[str] = "human", random_delay: int = 30, use_delta: bool = False) -> None:
+        super().__init__('StreetFighterIISpecialChampionEdition-Genesis', render_mode, random_delay)
         self.score = 0
         self.enemy_health = 175
         self.health = 175
         self.enemy_wins = 0
         self.player_wins = 0
+        self.random_delay = random_delay
 
     def compute_score(self, info: dict[str, Any]) -> int:
         reward = 0
 
-        #new_score = info["score"]
-        #if new_score > self.score:
-        #    reward += (new_score - self.score) / 100000
-        #self.score = new_score
+        new_score = info["score"]
+        if new_score > self.score:
+            reward += (new_score - self.score) / 100000
+        self.score = new_score
         
         new_health = info["health"]
         if new_health < self.health and new_health != 0:
@@ -113,40 +133,35 @@ class StreetFighter(FighterEnv):
         self.enemy_wins = new_enemy_wins
 
         if reward == 0.0:
-            return -0.00001
+            return -0.0001
         
         return reward
         
     # def to_zero(self):
         
     def reset(self, seed: Optional[int] = None) -> tuple[ObsType, dict[str, Any]]:
-        # super().reset(seed=seed, options=options)
-        obs, info = self.game.reset(seed=seed)
-        obs = self.preprocess(obs)
-
-        #print(info)
         self.score = 0
         self.enemy_health = 175
         self.health = 175
         self.enemy_wins = 0
         self.player_wins = 0
 
-        return obs, info    
+        return super().reset(seed=seed)
 
 
 class ArtOfFighting(FighterEnv):
-    def __init__(self, render_mode: Optional[str] = "human") -> None:
-        super().__init__('ArtOfFighting-Snes', render_mode)
+    def __init__(self, render_mode: Optional[str] = "human", random_delay: int = 30) -> None:
+        super().__init__('ArtOfFighting-Snes', render_mode, random_delay)
 
 
 class MortalKombat3(FighterEnv):
-    def __init__(self, render_mode: Optional[str] = "human") -> None:
-        super().__init__('MortalKombat3-Genesis', render_mode)
+    def __init__(self, render_mode: Optional[str] = "human", random_delay: int = 30) -> None:
+        super().__init__('MortalKombat3-Genesis', render_mode, random_delay)
 
 
 class VirtuaFighter(FighterEnv):
-    def __init__(self, render_mode: Optional[str] = "human") -> None:
-        super().__init__('VirtuaFighter-32x', render_mode)
+    def __init__(self, render_mode: Optional[str] = "human", random_delay: int = 30) -> None:
+        super().__init__('VirtuaFighter-32x', render_mode, random_delay)
         
 
 def run(env: Env) -> None:
@@ -159,6 +174,10 @@ def run(env: Env) -> None:
                 obs, info = env.reset()
             env.render()
             obs, reward, terminated, truncated, info = env.step(env.action_space.sample())
+
+            cv2.imshow('obs', obs)
+            cv2.waitKey(1)
+
             if reward != 0:
                 print(reward)
 
@@ -176,19 +195,17 @@ def make_env(env_class, n_procs: int = 4, n_stack: int = 4, **kwargs) -> Env:
     return env
 
     
-def train_model(model_class, env: Env, model_options: dict[str, Any], total_timesteps: int = 25000):
+def train_model(model_class, env: Env, model_options: dict[str, Any], total_timesteps: int = 25000, n_eval_episodes=25, tb_log_name="A2C", log_interval=1, verbose=0, device="auto"):
     env.reset()
     start_time = time.time()
     
     # https://stable-baselines3.readthedocs.io/en/master/guide/custom_policy.html
-    device = torch.device('cpu')
-
-    model = model_class(env=env, verbose=0, device=device, tensorboard_log="./board/", **model_options)
+    model = model_class(env=env, verbose=verbose, device=device, tensorboard_log="./board/", **model_options)
     print("Learning...")
-    model.learn(total_timesteps=total_timesteps, tb_log_name="PPO-00003", progress_bar=True)
+    model.learn(total_timesteps=total_timesteps, tb_log_name=tb_log_name, log_interval=log_interval, progress_bar=True)
 
     print("Evaluating...")
-    ep_rewards, ep_stds = evaluate_policy(model, env, n_eval_episodes=25, return_episode_rewards = True, deterministic = False)
+    ep_rewards, ep_stds = evaluate_policy(model, env, n_eval_episodes=n_eval_episodes, return_episode_rewards = True, deterministic = False)
     reward_mean = np.mean(np.array(ep_rewards))
     std_mean = np.mean(np.array(ep_stds))
     reward_sum = np.sum(np.array(ep_rewards))
