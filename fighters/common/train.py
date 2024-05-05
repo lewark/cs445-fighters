@@ -27,7 +27,7 @@ def get_hyperparam_combos(params_table, cur_params={}, keys=None):
     return model_setups
 
 
-def train_model(model_class, env: Env, model_options: dict[str, Any], total_timesteps: int = 25000, n_eval_episodes=25, tb_log_name="A2C", log_interval=1, verbose=0, device="auto"):
+def train_model(model_class, env: Env, model_options: dict[str, Any], total_timesteps: int = 25000, n_eval_episodes=25, tb_log_name="model", log_interval=1, verbose=0, device="auto"):
     env.reset()
     start_time = time.time()
 
@@ -56,20 +56,23 @@ def evaluate_model(model, env, model_options, n_eval_episodes, learn_elapsed_tim
     print(f"Evaluating over {n_eval_episodes} episodes...")
     start_time = time.time()
 
-    ep_rewards, ep_stds = evaluate_policy(model, env, n_eval_episodes=n_eval_episodes, return_episode_rewards = True, deterministic = False)
-    reward_mean = np.mean(np.array(ep_rewards))
-    std_mean = np.mean(np.array(ep_stds))
-    reward_sum = np.sum(np.array(ep_rewards))
+    ep_rewards, ep_lengths = evaluate_policy(model, env, n_eval_episodes=n_eval_episodes, return_episode_rewards = True, deterministic = False)
+    reward_mean = np.mean(ep_rewards)
+    reward_stdev = np.std(ep_rewards)
+    length_mean = np.mean(ep_lengths)
+    length_stdev = np.std(ep_lengths)
 
     eval_end_time = time.time()
     eval_elapsed_time = eval_end_time - start_time
     total_elapsed_time = learn_elapsed_time + eval_elapsed_time
 
     option_values = [model_options[key] for key in model_options]
-    arch = option_values + [ep_rewards, ep_stds, reward_mean, std_mean, reward_sum, learn_elapsed_time, eval_elapsed_time]
-    labels = [str(value) for value in option_values] + [str(reward_mean), str(std_mean), str(reward_sum)]
+    arch = option_values + [ep_rewards, ep_lengths, reward_mean, length_mean, learn_elapsed_time, eval_elapsed_time]
+    labels = [str(value) for value in option_values] + [str(reward_mean), str(length_mean)]
 
     print(f"Evaluation time: {eval_elapsed_time/60:.3f} minutes")
+    print(f"Mean episode reward: {reward_mean}, Standard deviation: {reward_stdev}")
+    print(f"Mean episode length: {length_mean}, Standard deviation: {length_stdev}")
     print(f'finished architecture {arch} at {total_elapsed_time/60:.3f} minutes.')
 
     return arch, labels
