@@ -1,3 +1,6 @@
+#from ..common.fighter_envs_4 import StreetFighter, make_env, train_model
+#from ..common.train import get_hyperparam_combos
+
 from ..common.fighter_envs import StreetFighter, make_env
 from ..common.train import train_model, get_hyperparam_combos
 
@@ -8,7 +11,7 @@ if __name__ == "__main__":
     params = {
         "policy": ['CnnPolicy'],
 #        "policy": ['CnnPolicy', 'MlpPolicy'],
-        "learning_rate": [0.1, 0.01, 0.001, 0.0001],
+#        "learning_rate": [0.1, 0.01, 0.001],
 #        "n_steps": [1024], #, 32, 64, 128, 256]
 #        "use_rms_prop": [True, False],
 #        "gamma": [0.99, 0.5],
@@ -22,11 +25,8 @@ if __name__ == "__main__":
     model_setups = get_hyperparam_combos(params)
     print("Training", len(model_setups), "models")
 
-    env = make_env(StreetFighter, n_procs, n_stack, render_mode=None, random_delay=30)
+    env = make_env(StreetFighter, n_procs, n_stack, render_mode=None)
     for model_options in model_setups:
         print(model_options)
-        learning_rate = model_options["learning_rate"]
-        label = f"A2C_{learning_rate}"
-
-        train_model(A2C, env, model_options, total_timesteps=500000, log_interval=1, n_eval_episodes=25, tb_log_name=label)
+        train_model(PPO, env, model_options, total_timesteps=500000)
     env.close()

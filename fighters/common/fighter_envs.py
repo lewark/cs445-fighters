@@ -107,13 +107,13 @@ class StreetFighter(FighterEnv):
         if new_score > self.score:
             reward += (new_score - self.score) / 100000
         self.score = new_score
-        
+
         new_health = info["health"]
         if new_health < self.health and new_health != 0:
             #print("new_health", new_health, self.health)
             reward -= (self.health - new_health) / 10
         self.health = new_health
-        
+
         new_enemy_health = info["enemy_health"]
         if new_enemy_health < self.enemy_health and new_enemy_health != 0:
             #print("new_enemy_health", new_enemy_health, self.enemy_health)
@@ -122,17 +122,17 @@ class StreetFighter(FighterEnv):
 
         new_player_wins = info["matches_won"]
         if new_player_wins > self.player_wins:
-            reward += 0.9 * new_player_wins
+            reward += 0.9 * (new_player_wins - self.player_wins)
         self.player_wins = new_player_wins
-        
+
         new_enemy_wins = info["enemy_matches_won"]
         if new_enemy_wins > self.enemy_wins:
-            reward -= 0.9 * new_enemy_wins
+            reward -= 0.9 * (new_enemy_wins - self.enemy_wins)
         self.enemy_wins = new_enemy_wins
 
         if reward == 0.0:
             return -0.0001
-        
+
         return reward
         
     def reset(self, *, seed: Optional[int] = None, options: Optional[dict[str, Any]] = None) -> tuple[ObsType, dict[str, Any]]:
