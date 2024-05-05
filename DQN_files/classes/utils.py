@@ -99,21 +99,22 @@ def load(filename):
         return object
 
 
-def save_images_as_dict(image_list):
+def save_results_as_dict(image_list):
     image_recorder = {}
 
     for trial, image in enumerate(image_list):
         for episode in image:
-            steps, rsum, all_rewards = image[episode]
+            steps, rsum, all_rewards, _ = image[episode]
 
-            image_recorder[(trial, episode, 0)] = steps 
+            all_steps = [i for i in range(steps)]
+            image_recorder[(trial, episode, 0)] = all_steps
             image_recorder[(trial, episode, 1)] = rsum
             image_recorder[(trial, episode, 2)] = all_rewards
     
     return image_recorder
 
 
-def save_images_as_dict(image_list):
+def save_trial_data(image_list):
     image_recorder = {}
 
     for trial, image in enumerate(image_list):
