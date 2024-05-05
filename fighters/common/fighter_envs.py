@@ -136,18 +136,18 @@ class StreetFighter(FighterEnv):
 
 
 class ArtOfFighting(FighterEnv):
-    def __init__(self, render_mode: Optional[str] = "human", random_delay: int = 30) -> None:
-        super().__init__('ArtOfFighting-Snes', render_mode, random_delay)
+    def __init__(self, render_mode: Optional[str] = "human", random_delay: int = 30, use_delta: bool = False) -> None:
+        super().__init__('ArtOfFighting-Snes', render_mode, random_delay, use_delta)
 
 
 class MortalKombat3(FighterEnv):
-    def __init__(self, render_mode: Optional[str] = "human", random_delay: int = 30) -> None:
-        super().__init__('MortalKombat3-Genesis', render_mode, random_delay)
+    def __init__(self, render_mode: Optional[str] = "human", random_delay: int = 30, use_delta: bool = False) -> None:
+        super().__init__('MortalKombat3-Genesis', render_mode, random_delay, use_delta)
 
 
 class VirtuaFighter(FighterEnv):
-    def __init__(self, render_mode: Optional[str] = "human", random_delay: int = 30) -> None:
-        super().__init__('VirtuaFighter-32x', render_mode, random_delay)
+    def __init__(self, render_mode: Optional[str] = "human", random_delay: int = 30, use_delta: bool = False) -> None:
+        super().__init__('VirtuaFighter-32x', render_mode, random_delay, use_delta)
         
 
 def run(env: Env) -> None:
