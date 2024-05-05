@@ -15,7 +15,7 @@ from .constants import LOG_DIR
 
 
 class FighterEnv(Env):
-    def __init__(self, game: str, render_mode: Optional[str] = "human", random_delay: int = 30, use_delta=False) -> None:
+    def __init__(self, game: str, render_mode: Optional[str] = "human", random_delay: int = 30, use_delta=False, info=None) -> None:
         super().__init__()
         self.observation_space = Box(low=0, high=255, shape=(84, 84, 1), dtype=np.uint8)
         self.action_space = MultiBinary(12)
@@ -24,7 +24,8 @@ class FighterEnv(Env):
         self.use_delta = use_delta
         self.game = retro.make(game=game,
                                use_restricted_actions=retro.Actions.FILTERED,
-                               render_mode=render_mode)
+                               render_mode=render_mode,
+                               info=info)
 
     def reset(self, *, seed: Optional[int] = None, options: Optional[dict[str, Any]] = None) -> tuple[ObsType, dict[str, Any]]:
         super().reset(seed=seed, options=options)
@@ -92,16 +93,20 @@ class FighterEnv(Env):
 
 class StreetFighter(FighterEnv):
     def __init__(self, render_mode: Optional[str] = "human", random_delay: int = 30, use_delta: bool = False) -> None:
-        super().__init__('StreetFighterIISpecialChampionEdition-Genesis', render_mode, random_delay)
+        super().__init__('StreetFighterIISpecialChampionEdition-Genesis', render_mode, random_delay,
+                         info="integrations/StreetFighterII.json")
         self.score = 0
         self.enemy_health = 175
         self.health = 175
         self.enemy_wins = 0
         self.player_wins = 0
+        self.distance = 307 - 205
         self.random_delay = random_delay
 
     def compute_reward(self, info: dict[str, Any]) -> int:
-        reward = 0
+        distance = self.get_player_distance(info)
+        reward = (distance - self.distance) / 10
+        self.distance = distance
 
         new_health = info["health"]
         if new_health < self.health and new_health != 0:
@@ -124,30 +129,40 @@ class StreetFighter(FighterEnv):
         self.enemy_wins = new_enemy_wins
 
         return reward
-        
-    def reset(self, *, seed: Optional[int] = None, options: Optional[dict[str, Any]] = None) -> tuple[ObsType, dict[str, Any]]:
-        self.score = 0
-        self.enemy_health = 175
-        self.health = 175
-        self.enemy_wins = 0
-        self.player_wins = 0
 
-        return super().reset(seed=seed, options=options)
+    def get_player_distance(self, info):
+        return np.hypot(
+            info["enemy_x"] - info["player_x"],
+            info["enemy_y"] - info["player_y"]
+        )
+        #return abs(info["enemy_x"] - info["player_x"])
+
+    def reset(self, *, seed: Optional[int] = None, options: Optional[dict[str, Any]] = None) -> tuple[ObsType, dict[str, Any]]:
+        obs, info = super().reset(seed=seed, options=options)
+
+        self.score = info.get("score", 0)
+        self.enemy_health = info.get("enemy_health", 176)
+        self.health = info.get("health", 176)
+        self.enemy_wins = info.get("enemy_matches_won", 0)
+        self.player_wins = info.get("matches_won", 0)
+        self.distance = 307 - 205
+
+        return obs, info
 
 
 class ArtOfFighting(FighterEnv):
-    def __init__(self, render_mode: Optional[str] = "human", random_delay: int = 30, use_delta: bool = False) -> None:
-        super().__init__('ArtOfFighting-Snes', render_mode, random_delay, use_delta)
+    def __init__(self, render_mode: Optional[str] = "human", random_delay: int = 30, use_delta: bool = False, info=None) -> None:
+        super().__init__('ArtOfFighting-Snes', render_mode, random_delay, use_delta, info)
 
 
 class MortalKombat3(FighterEnv):
-    def __init__(self, render_mode: Optional[str] = "human", random_delay: int = 30, use_delta: bool = False) -> None:
-        super().__init__('MortalKombat3-Genesis', render_mode, random_delay, use_delta)
+    def __init__(self, render_mode: Optional[str] = "human", random_delay: int = 30, use_delta: bool = False, info=None) -> None:
+        super().__init__('MortalKombat3-Genesis', render_mode, random_delay, use_delta, info)
 
 
 class VirtuaFighter(FighterEnv):
-    def __init__(self, render_mode: Optional[str] = "human", random_delay: int = 30, use_delta: bool = False) -> None:
-        super().__init__('VirtuaFighter-32x', render_mode, random_delay, use_delta)
+    def __init__(self, render_mode: Optional[str] = "human", random_delay: int = 30, use_delta: bool = False, info=None) -> None:
+        super().__init__('VirtuaFighter-32x', render_mode, random_delay, use_delta, info)
         
 
 def run(env: Env) -> None:
@@ -165,6 +180,7 @@ def run(env: Env) -> None:
             cv2.waitKey(1)
 
             if reward != 0:
+                #print(info)
                 print(reward)
 
 
