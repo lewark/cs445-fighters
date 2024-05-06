@@ -1,21 +1,24 @@
 from typing import Any, Optional, Union
 import random
 
-import cv2
-from gymnasium import Env
+from gymnasium import Env, Wrapper
 from gymnasium.core import ActType, ObsType, RenderFrame, SupportsFloat
 from gymnasium.spaces import MultiBinary, Box
-import numpy as np
-import retro
+from gymnasium.wrappers import RecordVideo
+
 from stable_baselines3.common.monitor import Monitor
 from stable_baselines3.common.vec_env import DummyVecEnv, VecFrameStack, SubprocVecEnv
+
+import numpy as np
+import cv2
+import retro
 import torch
 
 from .constants import LOG_DIR
 
 
 class FighterEnv(Env):
-    def __init__(self, game: str, render_mode: Optional[str] = "human", random_delay: int = 30, use_delta=False, info=None) -> None:
+    def __init__(self, game: str, render_mode: Optional[str] = "human", random_delay: int = 30, use_delta=False, info=None, video_folder: Optional[str] = None) -> None:
         super().__init__()
         self.observation_space = Box(low=0, high=255, shape=(84, 84, 1), dtype=np.uint8)
         self.action_space = MultiBinary(12)
@@ -26,6 +29,9 @@ class FighterEnv(Env):
                                use_restricted_actions=retro.Actions.FILTERED,
                                render_mode=render_mode,
                                info=info)
+        if video_folder is not None:
+            self.game.metadata["render_fps"] = self.game.metadata["video.frames_per_second"]
+            self.game = RecordVideo(self.game, video_folder)
 
     def reset(self, *, seed: Optional[int] = None, options: Optional[dict[str, Any]] = None) -> tuple[ObsType, dict[str, Any]]:
         super().reset(seed=seed, options=options)
@@ -92,9 +98,9 @@ class FighterEnv(Env):
 
 
 class StreetFighter(FighterEnv):
-    def __init__(self, render_mode: Optional[str] = "human", random_delay: int = 30, use_delta: bool = False) -> None:
+    def __init__(self, render_mode: Optional[str] = "human", random_delay: int = 30, use_delta: bool = False, video_folder: Optional[str] = None) -> None:
         super().__init__('StreetFighterIISpecialChampionEdition-Genesis', render_mode, random_delay,
-                         info="integrations/StreetFighterII.json")
+                         info="integrations/StreetFighterII.json", video_folder=video_folder)
         self.score = 0
         self.enemy_health = 175
         self.health = 175
