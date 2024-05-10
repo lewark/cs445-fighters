@@ -1,0 +1,9 @@
+torch
+torchvision
+torchaudio
+notebook
+jupyterlab
+gymnasium
+stable-retro
+stable_baselines3[extra]
+moviepy
