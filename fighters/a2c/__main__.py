@@ -1,8 +1,11 @@
-from ..common.fighter_envs import make_env
-from .a2c_envs import A2CStreetFighter, RewardFunction
+from ..common.fighter_envs import make_env, StreetFighter
+from .a2c_envs import CustomReward, AustinReward
 from ..common.train import train_model, get_hyperparam_combos
 from stable_baselines3 import A2C, PPO
 
+
+def make_a2c_env():
+    return CustomReward(StreetFighter(random_delay=0, render_mode=None), use_distance=False)
 
 if __name__ == "__main__":
     params = {
@@ -22,7 +25,7 @@ if __name__ == "__main__":
     model_setups = get_hyperparam_combos(params)
     print("Training", len(model_setups), "models")
 
-    env = make_env(lambda: A2CStreetFighter(RewardFunction(use_distance=False), random_delay=0, render_mode=None), n_procs, n_stack)
+    env = make_env(make_a2c_env, n_procs, n_stack)
     for model_options in model_setups:
         print(model_options)
         learning_rate = model_options["learning_rate"]
