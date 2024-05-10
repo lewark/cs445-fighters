@@ -1,5 +1,6 @@
 from numpy.random import default_rng as rng
 from itertools import product
+from typing import Any, Callable, Dict
 import torch
 import pickle
 import gzip
@@ -7,6 +8,8 @@ import gc
 
 from gymnasium import Env
 from stable_baselines3.common.base_class import BaseAlgorithm
+from stable_baselines3.common.evaluation import evaluate_policy
+from classes.constants import TB_DIR, OPT_DIR
     
 
 # Build based on https://codereview.stackexchange.com/questions/171173/list-all-possible-permutations-from-a-python-dictionary-of-lists
@@ -127,6 +130,11 @@ def save_trial_data(image_list):
     return image_recorder
 
 
+def kwargs_to_dict(**kwargs):
+        return kwargs
+
+
+
 class RandomGridSearch:
     """
         Build randomly selected options from a param dict.
@@ -177,29 +185,37 @@ class RandomGridSearch:
         for i in range(num_param_sets):
             parm_list = self._build_random_parma_list()
             param_set_list.append(self._build_params(parm_list))
-
+        
         return param_set_list
+
 
 
 class ExperimentRunner:
 
-    def __init__(self, model_class: BaseAlgorithm, base_env: Env, try_gpu = True, verbose = False):
+    def __init__(self, model_class: BaseAlgorithm=None, base_env: Env =None , try_gpu = True, verbose = False, results_dir = './results/'):
+        self.verbose = verbose
         self.model_class = model_class
         self.base_env = base_env
         self.env = None
         self.eval_env = None
 
+        self.results_dir = results_dir
+        self.tb_log_name = "DQN"
+
         self.model = None
-        self.model_ops = {'verbose': 0}
+        self.model_params = None
+        self.model_ops = {'tensorboard_log': TB_DIR, 'verbose': 0}
+        
+        self.train_opts = {'total_timesteps': 50_000,'progress_bar': True, 'tb_log_name':self.tb_log_name}
 
-        self.train_opts = {'progress_bar': False}
-
-        self._env_func = None
+        self.env_func = None
         self.env_func_options = {'render_mode': None}
 
-        self.eval_func = None
+        self.eval_func = evaluate_policy
         self.eval_func_options = {'deterministic':False}
         self.device = None
+
+        self.learn_timesteps = 0
 
         if try_gpu:
             try:
@@ -209,59 +225,127 @@ class ExperimentRunner:
             except:
                 if verbose:
                     print('unable to set device.')
-        
-    def set_model_ops(self, model_ops: dict):
+    
+    def set_model_class(self, model_class: BaseAlgorithm):
+        self.model_class = model_class
+    
+    def set_base_env(self, base_env: Env):
+        self.base_env = base_env
+
+    def set_model_ops(self, tensorboard_log=TB_DIR, verbose = 0, **kwargs):
+        model_ops = kwargs_to_dict(tensorboard_log=tensorboard_log, verbose = verbose, **kwargs)
         self.model_ops = model_ops
     
-    def set_env_func_options(self, options: dict):
-        self.set_env_func_options = options
+    def set_env_func_options(self, render_mode:str = None, **kwargs):
+        opts = kwargs_to_dict(render_mode=render_mode, **kwargs)
+        self.env_func_options = opts
 
-    def set_env_func(self, env_func, options):
-        self.set_env_func = env_func
-        self.env_func_options = options
+    def set_env_func(self, env_func: Callable):
+        self.env_func = env_func
+
+    def set_eval_func_options(self, return_episode_rewards=False, deterministic=False, **kwargs):
+        opts = kwargs_to_dict(return_episode_rewards=return_episode_rewards, deterministic=deterministic, **kwargs)
+        self.eval_func_options = opts
     
-    def set_eval_func_options(self, options: dict):
-        self.eval_func_options = options
+    def set_eval_func(self, eval_func = evaluate_policy):
+        self.eval_func = eval_func
     
     def build_model(self, env, hyper_params):
         self.model = self.model_class(env=env, device=self.device, **self.model_ops, **hyper_params)
     
+    def set_tb_log_name(self, tb_log_name: str):
+        self.tb_log_name = tb_log_name
+        self.train_opts['tb_log_name'] = tb_log_name
+
+    def set_tran_opts(self, total_timesteps: int = 500_000, progress_bar=True, tb_log_name = 'DQN', **kwargs):
+        opts = kwargs_to_dict(total_timesteps=total_timesteps, progress_bar=progress_bar, tb_log_name = tb_log_name, **kwargs)
+        self.train_opts = opts
+    
     def get_model(self):
         return self.model
 
-    def save_model(self, save_dir: str):
+    def save_model(self, save_dir: str = OPT_DIR):
         if self.model is None:
             print('No model set to save!')
         else:
             self.model.save(save_dir)
-            print(f'Model Saved to: {save_dir}')
+            if self.verbose:
+                print(f'Model Saved to: {save_dir}')
         
-    def train_model(self, total_timesteps: int, hyper_params: dict):
+    def train_model(self, hyper_params: dict, total_timesteps: int = None,  keep_model:bool = False):
+
+        if total_timesteps is not None:
+            self.train_opts['total_timesteps'] = total_timesteps
 
         try:
             print('Learning...')
-            self.model_params = hyper_params
-            self.env = self.make_env_func(**self.env_func_options)
-            self.build_model(env=self.env, hyper_params=hyper_params)
-            self.model.learn(total_timesteps=total_timesteps, **self.train_opts)
-            
-            self.env.close()
+            if keep_model:
+                self.learn_timesteps += total_timesteps
+                if self.env is None:
+                    self.env = self.env_func(self.base_env, **self.env_func_options)
+                else:
+                    self.env.reset()
 
-        except:
+                if self.model is None:
+                    self.build_model(env=self.env, hyper_params=hyper_params)
+
+                self.model.learn(reset_num_timesteps=False, **self.train_opts)
+            else:
+                self.model_params = hyper_params
+                if self.env is None:
+                    self.env = self.env_func(self.base_env, **self.env_func_options)
+
+                self.build_model(env=self.env, hyper_params=hyper_params)
+                self.model.learn(**self.train_opts)
+                self.learn_timesteps = total_timesteps
+            
+                self.env.close()
+                self.env = None
+
+        except Exception as e:
             print('unable to train model, closing env')
             if self.env is not None:
                 self.env.close()
+            print(e.with_traceback())
         
-    def evaluate_model(self, n_eval_episodes=5):
+    def evaluate_model(self, n_eval_episodes=25):
         try:
             print('Evaluating...')
-            self.eval_env = self.make_env_func(**self.env_func_options)
+            self.eval_env = self.env_func(self.base_env, **self.env_func_options)
             results = self.eval_func(self.model, self.eval_env, n_eval_episodes=n_eval_episodes, **self.eval_func_options)
             self.eval_env.close()
 
             return results
-        except:
+        except Exception as e:
             print('unable to evaluate model, closing eval_env')
             if self.eval_env is not None:
                 self.eval_env.close()
+            print(e.with_traceback())
+
+    def __str__(self):
+        self.str_output = f'expr: model: {self.model_class},\n'
+        self.str_output = self.str_output + f'base_env_class: {self.base_env}'
+        self.str_output = self.str_output + f'h_parameters: {self.model_params},\n'
+        total_time_steps = self.train_opts['total_timesteps']
+        self.str_output = self.str_output + f'total_timesteps: {total_time_steps},\n'
+        self.str_output = self.str_output + f'model current learning timesteps: {self.learn_timesteps}'
+
+        return self.str_output
+    
+    def __repr__(self):
+        self.str_output = f'expr: model: {self.model_class},\n'
+        self.str_output = self.str_output + f'base_env_class: {self.base_env}\n'
+        self.str_output = self.str_output + f'h_parameters: {self.model_params},\n'
+        self.str_output = self.str_output + f'model_ops: {self.model_ops},\n'
+        self.str_output = self.str_output + f'model_train_ops: {self.train_opts},\n'
+        if self.env_func is not None:
+            self.str_output = self.str_output + f'env_builder: {self.env_func.__name__},\n' 
+        self.str_output = self.str_output + f'env_builder opts: {self.env_func_options},\n'
+        if self.eval_func is not None:
+            self.str_output = self.str_output + f'eval function: {self.eval_func.__name__},\n'
+        self.str_output = self.str_output + f'eval function opts: {self.eval_func_options},\n'
+        self.str_output = self.str_output + f'device: {self.device},\n'
+        self.str_output = self.str_output + f'model current learning timesteps: {self.learn_timesteps}'
+
+        return self.str_output
 

@@ -1,5 +1,8 @@
 import time
 import numpy as np
+# from typing import Any
+
+# import torch
 import gymnasium as gym
 
 
@@ -36,7 +39,7 @@ class DiscreteWrapper(gym.ActionWrapper):
 
     def make_buttons_and_combos(self):
         action_buttons = ['A', 'B', 'C', 'X', 'Y', 'Z']
-        movement_buttons = ['U', 'D', 'L', 'R']
+        movement_buttons = ['Up', 'Down', 'Left', 'Right']
         movement_combos = []
         all_combos = []
 
@@ -60,3 +63,4 @@ class DiscreteWrapper(gym.ActionWrapper):
                 all_combos.append(mv_combo + [ac_btn])
 
         return all_buttons, all_combos
+    
