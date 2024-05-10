@@ -7,9 +7,9 @@ from ..common.fighter_envs import StreetFighter
 
 
 
-class A2CStreetFighter(StreetFighter):
-    def __init__(self, reward_function, render_mode: Optional[str] = "human", random_delay: int = 30, use_delta: bool = False, video_folder: Optional[str] = None):
-        super().__init__(render_mode=render_mode, random_delay=random_delay, use_delta=use_delta, video_folder=video_folder)
+class CustomReward(Wrapper):
+    def __init__(self, env, reward_function) -> None:
+        super().__init__(env)
         self.reward_function = reward_function
 
     def reset(self, *, seed: Optional[int] = None, options: Optional[dict[str, Any]] = None) -> tuple[ObsType, dict[str, Any]]:
@@ -17,8 +17,12 @@ class A2CStreetFighter(StreetFighter):
         self.reward_function.reset(info)
         return obs, info
 
-    def compute_reward(self, info: dict[str, Any]) -> float:
-        return self.reward_function.compute_reward(info)
+    def step(
+        self, action: WrapperActType
+    ) -> tuple[WrapperObsType, SupportsFloat, bool, bool, dict[str, Any]]:
+        obs, reward, terminated, truncated, info = self.env.step(action)
+        reward = self.reward_function.compute_reward(info)
+        return obs, reward, terminated, truncated, info
 
 
 class RewardFunction:
