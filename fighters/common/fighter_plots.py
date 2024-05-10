@@ -24,7 +24,7 @@ def plot_parameter_grid(data):
                 ax = axs[index]
                 x = np.array(results[col_x])
                 y = np.array(results[col_y])
-                means = np.array(results[non_params[1]])
+                means = np.array(results[non_params[5]])
                 means = means.astype(float)
                 ax.scatter(x, y, means)
                 ax.set_xlabel(col_x)
@@ -53,20 +53,20 @@ def plot_reward_mean(results, param_name, policy_type = False):
     plt.tight_layout()
 
 
-def plot_reward_std(results, param_name, policy_type = False):
+def plot_length_mean(results, param_name, policy_type = False):
     param = np.array(results[param_name])
     param = param.astype(str)
-    std = np.array(results['Std Mean'])
+    std = np.array(results['Episode Length Mean'])
 
     plt.figure(figsize=(6, 6))
     plt.plot(param, std, 'o')
     plt.xlabel(param_name)
-    plt.ylabel("Mean Standard Deviation")
+    plt.ylabel("Episode Length Mean")
     if policy_type is False:
-        plt.title(f'Mean Standard Deviations Associated with {param_name}')
+        plt.title(f'Episode Length Means Associated with {param_name}')
     else:
         policy = results['Policy'].iloc[0]
-        plt.title(f'{policy} Mean Standard Deviations Associated with {param_name}')
+        plt.title(f'{policy} Episode Length Means Associated with {param_name}')
     plt.tight_layout()
 
 
