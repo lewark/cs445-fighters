@@ -82,6 +82,8 @@ class CustomReward(Wrapper):
 
 
 class AustinReward(CustomReward):
+    def __init__(self, env):
+        super().__init__(env, True)
 
     def compute_reward(self, info: dict[str, Any]) -> float:
         distance = self.get_player_distance(info)

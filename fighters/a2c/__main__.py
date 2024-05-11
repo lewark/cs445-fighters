@@ -5,7 +5,7 @@ from stable_baselines3 import A2C, PPO
 
 
 def make_a2c_env():
-    return CustomReward(StreetFighter(random_delay=0, render_mode=None), use_distance=False)
+    return AustinReward(StreetFighter(random_delay=0, render_mode=None))
 
 if __name__ == "__main__":
     params = {
