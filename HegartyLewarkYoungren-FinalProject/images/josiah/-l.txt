@@ -1,0 +1,16 @@
+[‘MlpPolicy", + *CnnPolicy'],
+“gamma': [@.9, 0.99],
+
+“learning rate": [0.00001],
+“batch_size’: [256],
+
+“buffer_size': [5@_000],
+
+“train_freq': [16, 32],
+"gradient_steps': [1],
+“exploration_fraction’: [@.3, 0.5],
+“exploration_final_eps':-[@.1, 0.2],
+“target_update_interval': [100, 10000],
+*policy_kwargs':-[dict(net_arch=[256, 256])],
+“seed’:[2],
+
