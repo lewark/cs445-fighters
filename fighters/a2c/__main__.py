@@ -1,13 +1,16 @@
-from ..common.fighter_envs import StreetFighter, make_env
+from ..common.fighter_envs import make_env, StreetFighter
+from .a2c_envs import CustomReward, AustinReward
 from ..common.train import train_model, get_hyperparam_combos
 from stable_baselines3 import A2C, PPO
 
 
+def make_a2c_env():
+    return AustinReward(StreetFighter(random_delay=0, render_mode=None))
+
 if __name__ == "__main__":
     params = {
-        "policy": ['CnnPolicy'],
-#        "policy": ['CnnPolicy', 'MlpPolicy'],
-        "learning_rate": [0.000001, 0.00001], #, 0.0001, 0.001, 0.01],
+        "policy": ['CnnPolicy', 'MlpPolicy'],
+        "learning_rate": [0.000001, 0.00001, 0.0001], #, 0.001, 0.01],
         "n_steps": [5], #, 16]
 #        "use_rms_prop": [True, False],
 #        "gamma": [0.99, 0.5],
@@ -17,12 +20,12 @@ if __name__ == "__main__":
 
     n_procs = 8
     n_stack = 4
-    total_timesteps = 10000000
+    total_timesteps = 500000
 
     model_setups = get_hyperparam_combos(params)
     print("Training", len(model_setups), "models")
 
-    env = make_env(StreetFighter, n_procs, n_stack, render_mode=None, random_delay=0)
+    env = make_env(make_a2c_env, n_procs, n_stack)
     for model_options in model_setups:
         print(model_options)
         learning_rate = model_options["learning_rate"]
